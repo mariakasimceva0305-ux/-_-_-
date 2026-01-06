@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Геокодер адресов Москвы</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            flex: 1 1 auto;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-basic {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-basic:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-improved {
+            background: #764ba2;
+            color: white;
+        }
+
+        .btn-improved:hover {
+            background: #633a8a;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .results-count {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .result-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+
+        .result-address {
+            flex: 1;
+        }
+
+        .address-street {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .address-details {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .score-badge {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .result-coords {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .coord-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .coord-label {
+            color: #666;
+            font-size: 12px;
+            font-weight: 500;
+            min-width: 80px;
+        }
+
+        .coord-value {
+            color: #333;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .map-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 12px;
+            margin-top: 10px;
+            display: inline-block;
+        }
+
+        .map-link:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fee;
+            border-left: 4px solid #f44336;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        #cat-image {
+            transition: transform 0.3s ease;
+            cursor: pointer;
+        }
+
+        #cat-image:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        @media (max-width: 768px) {
+            #cat-image {
+                width: 80px;
+            }
+        }
+
+        /* Вертикальные надписи слева и справа */
+        .vertical-label {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%) scaleX(1.15);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            color: #FF8800;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 84px;
+            font-weight: 800;
+            letter-spacing: 20px;
+            z-index: 100;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0.7;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            text-shadow: 0 3px 12px rgba(255, 136, 0, 0.3),
+                         0 6px 24px rgba(255, 136, 0, 0.2);
+            line-height: 1.2;
+        }
+
+        .vertical-label:hover {
+            opacity: 1;
+            text-shadow: 0 6px 18px rgba(255, 136, 0, 0.5),
+                         0 12px 36px rgba(255, 136, 0, 0.3);
+            transform: translateY(-50%) scaleX(1.15) scale(1.05);
+        }
+
+        .vertical-label-left {
+            left: 120px;
+            top: 47.5%;
+            transform: translateY(-50%) rotate(-180deg) scaleX(1.15);
+        }
+
+        .vertical-label-left:hover {
+            transform: translateY(-50%) rotate(-180deg) scaleX(1.15) scale(1.05);
+        }
+
+        .vertical-label-right {
+            right: 120px;
+        }
+
+        /* Скрываем на маленьких экранах, чтобы не мешали */
+        @media (max-width: 1400px) {
+            .vertical-label {
+                display: none;
+            }
+        }
+
+        /* Адаптация для очень широких экранов */
+        @media (min-width: 1600px) {
+            .vertical-label {
+                font-size: 96px;
+                letter-spacing: 26px;
+            }
+            .vertical-label-left {
+                left: 150px;
+            }
+            .vertical-label-right {
+                right: 150px;
+            }
+        }
+
+        @media (min-width: 1920px) {
+            .vertical-label {
+                font-size: 108px;
+                letter-spacing: 32px;
+            }
+            .vertical-label-left {
+                left: 180px;
+            }
+            .vertical-label-right {
+                right: 180px;
+            }
+        }
+
+        .top-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .debug-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #fff;
+            background: #4b5563;
+            padding: 10px 16px;
+            border-radius: 999px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: background 0.25s ease, transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .debug-toggle:hover {
+            background: #374151;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .debug-toggle input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .debug-toggle span {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .debug-toggle span::before {
+            content: "";
+            display: inline-flex;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            box-sizing: border-box;
+            background: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .debug-toggle input:checked + span::before {
+            content: "✓";
+            justify-content: center;
+            align-items: center;
+            background: #10b981;
+            border-color: #10b981;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .debug-panel {
+            background: transparent;
+            border-radius: 8px;
+            padding: 10px 0 12px 0;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .debug-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            font-size: 13px;
+            color: #374151;
+        }
+
+        .debug-panel-header span:first-child {
+            font-weight: 600;
+        }
+
+        .debug-section {
+            margin-top: 6px;
+        }
+
+        .debug-section-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+
+        .debug-formula {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 4px;
+            font-family: 'SF Mono', ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .debug-formula span {
+            white-space: nowrap;
+        }
+
+        .debug-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 4px 16px;
+            font-size: 12px;
+            color: #4b5563;
+        }
+
+        .debug-grid-label {
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .debug-grid-value {
+            font-family: 'SF Mono', ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .debug-candidate {
+            margin-top: 4px;
+            padding: 6px 0;
+        }
+
+        .debug-candidate-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .debug-candidate-title {
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .debug-tags {
+            display: none;
+        }
+
+        .debug-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .debug-cards {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .debug-card {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 12px 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+            border: 1px solid #e5e7eb;
+        }
+
+        .debug-card-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .debug-chip {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #111827;
+            color: #e5e7eb;
+            font-size: 11px;
+            font-family: 'SF Mono', ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            margin-top: 4px;
+        }
+
+        .debug-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+            font-size: 11px;
+        }
+
+        .debug-table th,
+        .debug-table td {
+            padding: 4px 6px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .debug-table th {
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .debug-table td {
+            font-family: 'SF Mono', ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            color: #374151;
+        }
+    </style>
+</head>
+<body>
+    <!-- Вертикальные надписи -->
+    <div class="vertical-label vertical-label-left">REU DS CLUB</div>
+    <div class="vertical-label vertical-label-right">REU DS CLUB</div>
+
+    <div class="container">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <img src="/static/cat.png" alt="Кот в академической шапочке" 
+                 id="cat-image" 
+                 style="width: 120px; height: auto; display: inline-block; 
+                        border-radius: 50%; border: 3px solid #667eea; 
+                        padding: 5px; background: white; 
+                        box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        </div>
+        <h1>🗺️ Геокодер адресов Москвы</h1>
+        <p class="subtitle">Система геокодирования адресов по данным OpenStreetMap</p>
+
+        <div class="input-group">
+            <label for="address-input">Введите адрес:</label>
+            <input 
+                type="text" 
+                id="address-input" 
+                placeholder="Например: Москва, Тверская улица, 12к1"
+                autocomplete="off"
+            >
+        </div>
+
+        <div class="top-controls">
+            <div class="button-group">
+                <button class="btn-basic" onclick="geocode('basic')">Базовый поиск</button>
+                <button class="btn-improved" onclick="geocode('improved')">Улучшенный поиск</button>
+            </div>
+            <label class="debug-toggle">
+                <input type="checkbox" id="debug-checkbox">
+                <span>Режим объяснимого поиска</span>
+            </label>
+        </div>
+
+        <div id="results-container"></div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        async function geocode(mode) {
+            const input = document.getElementById('address-input');
+            const address = input.value.trim();
+
+            if (!address) {
+                showError('Пожалуйста, введите адрес');
+                return;
+            }
+
+            const container = document.getElementById('results-container');
+            container.innerHTML = '<div class="loading"><div class="spinner"></div>Поиск адреса...</div>';
+
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            try {
+                let url = `${API_BASE}/geocode/${mode}?address=${encodeURIComponent(address)}`;
+                const debugEnabled = document.getElementById('debug-checkbox').checked;
+                if (mode === 'improved' && debugEnabled) {
+                    url += `&debug=true`;
+                }
+
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`Ошибка: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                displayResults(data, mode);
+
+            } catch (error) {
+                showError(`Ошибка при поиске: ${error.message}`);
+            } finally {
+                buttons.forEach(btn => btn.disabled = false);
+            }
+        }
+
+        function displayResults(data, mode) {
+            const container = document.getElementById('results-container');
+
+            if (!data.objects || data.objects.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <p>Адреса не найдены</p>
+                        <p style="font-size: 12px; margin-top: 10px;">Попробуйте изменить запрос или использовать улучшенный поиск</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const count = data.objects.length;
+
+            let html = '';
+
+            if (mode === 'improved' && data.parsed_query) {
+                const pq = data.parsed_query;
+                const np = pq.number_parsed || {};
+                const best = data.objects[0] || null;
+                const sd = best && best.score_decomposition ? best.score_decomposition : {};
+                const addr = best
+                    ? (best.normalized_address || `${best.locality || ''}, ${best.street || ''} ${best.number || ''}`.trim())
+                    : '—';
+
+                const streetSimVal = (typeof sd.street_sim === 'number') ? sd.street_sim : null;
+                const numScoreVal = (typeof sd.number_score === 'number') ? sd.number_score : null;
+                const finalVal = (typeof sd.final_score === 'number')
+                    ? sd.final_score
+                    : (best && typeof best.score === 'number' ? best.score : null);
+
+                const sStreet = streetSimVal != null ? streetSimVal.toFixed(2) : '—';
+                const sNum = numScoreVal != null ? numScoreVal.toFixed(2) : '—';
+                const sFinal = finalVal != null ? finalVal.toFixed(2) : '—';
+
+                // Пытаемся восстановить эффективные веса для конкретного примера:
+                // final_score ≈ w_s · street_sim + w_n · number_score, w_s + w_n = 1
+                let wStreetDisplay = '—';
+                let wNumDisplay = '—';
+                if (streetSimVal != null && numScoreVal != null && finalVal != null) {
+                    if (Math.abs(streetSimVal - numScoreVal) < 1e-6) {
+                        wStreetDisplay = '0.5';
+                        wNumDisplay = '0.5';
+                    } else {
+                        const wStreet = (finalVal - numScoreVal) / (streetSimVal - numScoreVal);
+                        const wNum = 1 - wStreet;
+                        if (isFinite(wStreet) && isFinite(wNum)) {
+                            wStreetDisplay = wStreet.toFixed(2);
+                            wNumDisplay = wNum.toFixed(2);
+                        }
+                    }
+                }
+
+                html += `
+                    <div class="debug-panel">
+                        <div class="debug-panel-header">
+                            <span>Режим объяснимого поиска</span>
+                            <span style="font-weight:400;font-size:12px;color:#9ca3af;">Кратко: как разобран запрос и почему выбран этот кандидат</span>
+                        </div>
+
+                        <div class="debug-cards">
+                            <div class="debug-card">
+                                <div class="debug-card-title">Разбор запроса</div>
+
+                                <div class="debug-section">
+                                    <div class="debug-section-title">Исходный запрос</div>
+                                    <div class="debug-chip">${escapeHtml(data.searched_address || '')}</div>
+                                </div>
+
+                                <div class="debug-section" style="margin-top:10px;">
+                                    <div class="debug-section-title">Нормализованный адрес</div>
+                                    <table class="debug-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Поле</th>
+                                                <th>Значение</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Город</td>
+                                                <td>${escapeHtml(pq.city_norm || '—')}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Улица</td>
+                                                <td>${escapeHtml(pq.street_norm || '—')}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Дом</td>
+                                                <td>${escapeHtml(pq.number_norm || '—')}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="debug-section" style="margin-top:10px;">
+                                    <div class="debug-section-title">Дом (base / корпус / строение / литера)</div>
+                                    <table class="debug-table">
+                                        <thead>
+                                            <tr>
+                                                <th>base</th>
+                                                <th>корпус</th>
+                                                <th>строение</th>
+                                                <th>литера</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>${(np.base ?? '—')}</td>
+                                                <td>${(np.corp ?? '—')}</td>
+                                                <td>${(np.stroenie ?? '—')}</td>
+                                                <td>${(np.litera ?? '—')}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="debug-card">
+                                <div class="debug-card-title">Лучший кандидат</div>
+                                <div class="debug-candidate">
+                                    <div class="debug-candidate-header">
+                                        <div class="debug-candidate-title">${escapeHtml(addr)}</div>
+                                    </div>
+                                    <div style="font-size:12px;color:#374151;margin-top:6px;">
+                                        final_score = <strong>${sFinal}</strong>
+                                    </div>
+                                    <div class="debug-formula">
+                                        <div><span>final_score = w_s · street_sim + w_n · number_score</span></div>
+                                        <div style="margin-top:2px;">
+                                            <span>w_s = ${wStreetDisplay}</span>
+                                            &nbsp; , &nbsp;
+                                            <span>w_n = ${wNumDisplay}</span>
+                                        </div>
+                                        <div style="margin-top:2px;">
+                                            <span>street_sim = ${sStreet}</span>
+                                            &nbsp; , &nbsp;
+                                            <span>number_score = ${sNum}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div class="results">
+                    <div class="results-header">
+                        <h2 style="font-size: 20px; color: #333;">Результаты поиска</h2>
+                        <div class="results-count">Найдено: ${count} ${getWordForm(count)}</div>
+                    </div>
+            `;
+
+            data.objects.forEach((obj, index) => {
+                // Используем нормализованный адрес в формате организаторов, если он есть
+                const normalizedAddr = obj.normalized_address || '';
+                const address = `${obj.street || ''} ${obj.number || ''}`.trim();
+                const locality = obj.locality || '';
+                const displayAddress = normalizedAddr || (locality ? `${locality}, ${address}` : address);
+                const score = obj.score || 1.0;
+                const lat = obj.lat.toFixed(6);
+                const lon = obj.lon.toFixed(6);
+                const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}&zoom=17`;
+
+                html += `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <div class="result-address">
+                                <div class="address-street">${displayAddress || 'Адрес не указан'}</div>
+                                ${normalizedAddr ? '' : `<div class="address-details">${address || ''}</div>`}
+                            </div>
+                            ${mode === 'improved' ? `<div class="score-badge">Score: ${score.toFixed(2)}</div>` : ''}
+                        </div>
+                        <div class="result-coords">
+                            <div class="coord-item">
+                                <span class="coord-label">Широта:</span>
+                                <span class="coord-value">${lat}</span>
+                            </div>
+                            <div class="coord-item">
+                                <span class="coord-label">Долгота:</span>
+                                <span class="coord-value">${lon}</span>
+                            </div>
+                        </div>
+                        <a href="${mapUrl}" target="_blank" class="map-link">📍 Открыть на карте</a>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function showError(message) {
+            const container = document.getElementById('results-container');
+            container.innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        function getWordForm(count) {
+            const lastDigit = count % 10;
+            const lastTwoDigits = count % 100;
+
+            if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
+                return 'результатов';
+            }
+            if (lastDigit === 1) {
+                return 'результат';
+            }
+            if (lastDigit >= 2 && lastDigit <= 4) {
+                return 'результата';
+            }
+            return 'результатов';
+        }
+
+        // Поиск по Enter
+        document.getElementById('address-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                geocode('improved');
+            }
+        });
+
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>
+
